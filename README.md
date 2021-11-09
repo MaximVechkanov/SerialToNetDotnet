@@ -14,5 +14,6 @@ A simple serial to telnet interfacing with multi-client support implemented in C
 - Add configurable network protocol to use (RAW is the next one)
 - Open serial port only on demand. Close it after last client is disconnected
 
+## Acknowledgements
 Inspired by ser2net. I did not find how to compile it for Windows and it does not have multiple clients support
 https://github.com/UngarMax/TelnetServer - used as reference for telnet server implementation
