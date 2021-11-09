@@ -17,6 +17,7 @@ namespace SerialToNetDotnet
 
     class Configuration
     {
+        public List <char> skip_chars;
         public List <PortCfg> links { get; set; }
     }
 
@@ -26,37 +27,40 @@ namespace SerialToNetDotnet
 
         static void Main(string[] args)
         {
+            string fileName;
             if (args.Length == 0)
             {
-                Console.Error.WriteLine("Specifiy path to config file");
-                return;
+                fileName = "server_config.yaml";
+                Console.Error.WriteLine("Using default path to config file: {0}", fileName);
             }
+            else
+                fileName = args[0];
 
             var deserializer = new YamlDotNet.Serialization.DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
 
-            Configuration config = deserializer.Deserialize<Configuration>(File.ReadAllText(args[0]));
+            Configuration config = deserializer.Deserialize<Configuration>(File.ReadAllText(fileName));
 
             exposers = new List <Exposer>();
 
             foreach (var link in config.links)
             {
-                Exposer.Config cfg = new Exposer.Config
+                Exposer.Config srvCfg = new Exposer.Config
                 {
                     baudRate = link.baudrate,
                     portName = link.serial_port,
-                    tcpPort = link.tcp_port
+                    tcpPort = link.tcp_port,
+                    skipChars = config.skip_chars
                 };
 
-                exposers.Add(new Exposer(cfg));
+                exposers.Add(new Exposer(srvCfg));
             }
 
             foreach (var srv in exposers)
             {
                 srv.Start();
             }
-
 
             while (true)
             {

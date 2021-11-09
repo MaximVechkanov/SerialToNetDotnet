@@ -14,6 +14,8 @@ namespace SerialToNetDotnet
             public int tcpPort { get; set; }
             public int baudRate { get; set; }
             public string portName { get; set; }
+
+            public List <char> skipChars { get; set; }
         }
 
         private Config m_config;
@@ -23,7 +25,7 @@ namespace SerialToNetDotnet
         public Exposer(Config config)
         {
             m_config = config;
-            m_server = new Server(m_config.tcpPort, m_config.portName);
+            m_server = new Server(m_config.tcpPort, m_config.portName, config.skipChars);
             m_server.DataReceived += NetDataReceivedHandler;
 
             m_serial = new SerialPort();

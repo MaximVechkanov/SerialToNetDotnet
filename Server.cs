@@ -31,8 +31,9 @@ namespace SerialToNetDotnet
         private string m_portName;
         public delegate void DataReceivedHandler(byte[] buffer, int numBytes);
         public event DataReceivedHandler DataReceived;
+        private List<char> m_skippedChars;
 
-        public Server(int port, string comPortName)
+        public Server(int port, string comPortName, List <char> skippedChars)
         {
             this.m_portName = comPortName;
             this.m_port = port;
@@ -40,6 +41,8 @@ namespace SerialToNetDotnet
             this.m_clients = new Dictionary<Socket, Client>();
 
             this.m_rxBuffer = new byte[m_bufLen];
+
+            this.m_skippedChars = skippedChars;
         }
 
         public void Start()
@@ -111,7 +114,7 @@ namespace SerialToNetDotnet
 
             SendStringToSocket(clientSocket, "\r\n");
 
-            SendStringToSocket(clientSocket, "Please enter your short signature/nickname (only letters): ");
+            SendStringToSocket(clientSocket, "Please enter your short signature: ");
         }
 
         private void SendBytesToSocket(Socket sock, byte[] data)
@@ -160,7 +163,7 @@ namespace SerialToNetDotnet
                             SendBytesToSocket(clientSocket, new byte[] { m_rxBuffer[0] });
                             client.AddSignatureChar(m_rxBuffer[0]);
                         }
-                        else
+                        else if (!m_skippedChars.Contains((char)m_rxBuffer[0]))
                         {
                             // Normal byte in normal state
                             DataReceived(m_rxBuffer, bytesReceived);

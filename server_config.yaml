@@ -1,5 +1,6 @@
 ﻿# asdasd
 # asdas
+skip_chars: ["\u000D"]
 links:
   - serial_port: COM4
     baudrate: 115200
