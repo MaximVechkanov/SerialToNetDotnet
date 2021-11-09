@@ -1,0 +1,9 @@
+﻿# asdasd
+# asdas
+links:
+  - serial_port: COM4
+    baudrate: 115200
+    tcp_port: 3100
+  - serial_port: COM5
+    baudrate: 115200
+    tcp_port: 3101

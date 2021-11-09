@@ -9,7 +9,7 @@ namespace SerialToNetDotnet
 {
     class Exposer
     {
-        public struct Config
+        public class Config
         {
             public int tcpPort { get; set; }
             public int baudRate { get; set; }
