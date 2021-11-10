@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
-using YamlDotNet.Core;
-using YamlDotNet.Helpers;
 using System.IO;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace SerialToNetDotnet
 {
@@ -21,13 +18,13 @@ namespace SerialToNetDotnet
 
     class Configuration
     {
-        public List <char> skip_chars;
-        public List <PortCfg> links { get; set; }
+        public List<char> skip_chars;
+        public List<PortCfg> links { get; set; }
     }
 
     class Program
     {
-        private static List <Exposer> exposers;
+        private static List<Exposer> exposers;
 
         static void Main(string[] args)
         {
@@ -46,7 +43,7 @@ namespace SerialToNetDotnet
 
             Configuration config = deserializer.Deserialize<Configuration>(File.ReadAllText(fileName));
 
-            exposers = new List <Exposer>();
+            exposers = new List<Exposer>();
 
             foreach (var link in config.links)
             {

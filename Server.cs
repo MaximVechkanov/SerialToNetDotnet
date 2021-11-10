@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
-using System.IO;
-using System.IO.Ports;
+using System.Text;
 
 namespace SerialToNetDotnet
 {
@@ -17,7 +13,7 @@ namespace SerialToNetDotnet
         WONT = 0xFC,
         DO = 0xFD,
         DONT = 0xFE,
-        
+
     }
 
     class Server
@@ -33,7 +29,7 @@ namespace SerialToNetDotnet
         public event DataReceivedHandler DataReceived;
         private List<char> m_skippedChars;
 
-        public Server(int port, string comPortName, List <char> skippedChars)
+        public Server(int port, string comPortName, List<char> skippedChars)
         {
             this.m_portName = comPortName;
             this.m_port = port;
