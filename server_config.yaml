@@ -11,7 +11,8 @@ links:
     stopbits: 1
     parity: none
     tcp_port: 3100
-    terminal_type: raw
+    terminal_type: telnet
+
   - serial_port: COM5
     baudrate: 115200
     databits: 8
