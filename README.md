@@ -20,12 +20,6 @@ A simple serial to telnet interfacing with multi-client support implemented in C
 7. Enjoy
 8. You can type `status` command into the program window to print the current status of opened ports and connected clients
 
-## TODO List
-- Linux build
-- Add configurable network protocol to use (RAW is the next one)
-- Open serial port only on demand. Close it after last client is disconnected
-- Use async/await instead of callbacks (?)
-
 ## Acknowledgements
 Inspired by ser2net. I did not find how to compile it for Windows and it does not have multiple clients support
 https://github.com/UngarMax/TelnetServer - used as reference for telnet server implementation
