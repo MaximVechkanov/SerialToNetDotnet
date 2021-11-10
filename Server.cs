@@ -73,7 +73,7 @@ namespace SerialToNetDotnet
 
             m_clients.Add(clientSocket, client);
 
-            Console.WriteLine("Server at {0} ({1}): client connected from {2}", m_port, m_portName, remoteEp.Address);
+            Console.WriteLine("Server at {0} ({1}): client connected from {2}", m_port, m_portName, remoteEp.ToString());
 
             clientSocket.BeginReceive(m_rxBuffer, 0, 1, SocketFlags.None, new AsyncCallback(ReceiveData), clientSocket);
             m_serverSocket.BeginAccept(new AsyncCallback(IncomeConnectionCallback), m_serverSocket);
@@ -98,23 +98,37 @@ namespace SerialToNetDotnet
 
             if (m_clients.Count != 0)
             {
-                SendStringToSocket(
-                clientSocket,
-                "Already connected clients:\r\n"
-                );
+                SendStringToSocket(clientSocket, "Already connected clients:\r\n");
 
-                foreach (Socket sock in m_clients.Keys)
-                {
-                    SendStringToSocket(
-                        clientSocket,
-                        "    " + sock.RemoteEndPoint.ToString() + " - " + m_clients[sock].m_signature + "\r\n"
-                        );
-                }
+                SendStringToSocket(clientSocket, getClientsString());
+
+                //foreach (Socket sock in m_clients.Keys)
+                //{
+                //    SendStringToSocket(
+                //        clientSocket,
+                //        "    " + sock.RemoteEndPoint.ToString() + " - " + m_clients[sock].m_signature + "\r\n"
+                //        );
+                //}
             }
 
             SendStringToSocket(clientSocket, "\r\n");
 
             SendStringToSocket(clientSocket, "Please enter your short signature: ");
+        }
+
+        public string getClientsString()
+        {
+            if (m_clients.Count == 0)
+                return "No clients connected";
+
+            string res = "";
+            foreach (Socket s in m_clients.Keys)
+            {
+                Client c = m_clients[s];
+                res += String.Format("    {0} from {1}\r\n", c.m_signature, s.RemoteEndPoint.ToString());
+            }
+
+            return res;
         }
 
         private void SendBytesToSocket(Socket sock, byte[] data)

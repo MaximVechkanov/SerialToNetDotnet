@@ -14,13 +14,26 @@ namespace SerialToNetDotnet
             public int tcpPort { get; set; }
             public int baudRate { get; set; }
             public string portName { get; set; }
+            public List<char> skipChars { get; set; }
+            public int databits { get; set; }
 
-            public List <char> skipChars { get; set; }
+            public int stopbits { get; set; }
+            public TerminalType terminalType { get; set; }
+
+            public Parity parity { get; set; }
+        }
+
+        public enum TerminalType
+        {
+            raw,
+            telnet,
+            unknown
         }
 
         private Config m_config;
         private readonly Server m_server;
         private readonly SerialPort m_serial;
+        public bool m_isStarted;
 
         public Exposer(Config config)
         {
@@ -29,44 +42,40 @@ namespace SerialToNetDotnet
             m_server.DataReceived += NetDataReceivedHandler;
 
             m_serial = new SerialPort();
+            m_isStarted = false;
         }
 
 
         public void Start()
         {
-            // Get a list of serial port names.
-            string[] ports = SerialPort.GetPortNames();
 
-            if (ports.Contains(m_config.portName))
+            m_serial.PortName = m_config.portName;
+            m_serial.BaudRate = m_config.baudRate;
+            m_serial.Parity = m_config.parity;
+            m_serial.DataBits = m_config.databits;
+            m_serial.StopBits = stopBitsIntToEnum(m_config.stopbits);
+            m_serial.Handshake = Handshake.None;
+            m_serial.DataReceived += SerialDataReceivedHandler;
+
+            try
             {
-                m_serial.PortName = m_config.portName;
-                m_serial.BaudRate = m_config.baudRate;
-                m_serial.Parity = Parity.None;
-                m_serial.DataBits = 8;
-                m_serial.StopBits = StopBits.One;
-                m_serial.Handshake = Handshake.None;
-                m_serial.DataReceived += SerialDataReceivedHandler;
-
-                try
-                {
-                    m_serial.Open();
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Failed to open port {0}: {1}", m_serial.PortName, e);
-                }
-
-                try
-                {
-                    m_server.Start();
-                }
-                catch { }
+                m_serial.Open();
             }
-            else
+            catch
             {
-                Console.WriteLine("Error opening port {0}: no port", m_config.portName);
+                throw new Exception(String.Format("Cannot open port {0}", m_config.portName));
             }
 
+            try
+            {
+                m_server.Start();
+            }
+            catch
+            {
+                throw new Exception("Server cannot be started");
+            }
+
+            m_isStarted = true;
         }
 
         private void NetDataReceivedHandler(byte[] buffer, int numBytes)
@@ -82,6 +91,35 @@ namespace SerialToNetDotnet
             sp.Read(rxBuf, 0, numRx);
 
             m_server.SendBytesToAll(rxBuf);
+        }
+
+        public override string ToString()
+        {
+            string res = string.Format(
+                "Serial {0}, is opened: {1}, type: {2}. Server on port {3}, clients:\r\n",
+                m_config.portName,
+                m_serial.IsOpen,
+                m_config.terminalType.ToString(),
+                m_config.tcpPort);
+
+            res += m_server.getClientsString();
+
+            return res;
+        }
+
+        internal static StopBits stopBitsIntToEnum(int num)
+        {
+            switch (num)
+            {
+                case 0:
+                    return StopBits.None;
+                case 1:
+                    return StopBits.One;
+                case 2:
+                    return StopBits.Two;
+                default:
+                    throw new ArgumentException(String.Format("Cannot convert {0} to enum StopBits", num));
+            }
         }
     }
 }

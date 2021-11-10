@@ -13,6 +13,10 @@ namespace SerialToNetDotnet
         public string serial_port { get; set; }
         public int baudrate { get; set; }
         public int tcp_port { get; set; }
+        public int databits { get; set; }
+        public int stopbits { get; set; }
+        public string terminal_type { get; set; }
+        public string parity { get; set; }
     }
 
     class Configuration
@@ -46,25 +50,65 @@ namespace SerialToNetDotnet
 
             foreach (var link in config.links)
             {
-                Exposer.Config srvCfg = new Exposer.Config
-                {
-                    baudRate = link.baudrate,
-                    portName = link.serial_port,
-                    tcpPort = link.tcp_port,
-                    skipChars = config.skip_chars
-                };
+                var terminalTypeTmp = Exposer.TerminalType.unknown;
 
-                exposers.Add(new Exposer(srvCfg));
+                try
+                {
+                    terminalTypeTmp = (Exposer.TerminalType)Enum.Parse(typeof(Exposer.TerminalType), link.terminal_type);
+                }
+                catch
+                {
+                    Console.Error.WriteLine("Failed to parse terminal_type ({1}) for link ({0}, {2})", link.serial_port, link.terminal_type, link.tcp_port);
+                }
+
+                try
+                {
+                    var parity = (System.IO.Ports.Parity)Enum.Parse(typeof(System.IO.Ports.Parity), link.parity, true);
+                    Exposer.Config srvCfg = new Exposer.Config
+                    {
+                        baudRate = link.baudrate,
+                        portName = link.serial_port,
+                        tcpPort = link.tcp_port,
+                        skipChars = config.skip_chars,
+                        databits = link.databits,
+                        stopbits = link.stopbits,
+                        terminalType = terminalTypeTmp,
+                        parity = parity,
+                    };
+
+                    exposers.Add(new Exposer(srvCfg));
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine("Failed to create port mapping - check config: {0}", e);
+                }
             }
 
             foreach (var srv in exposers)
             {
-                srv.Start();
+                try
+                {
+                    srv.Start();
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine("Failed to start mapper: {0}", e.Message);
+                }
             }
+
+            exposers.RemoveAll((exposer) => !exposer.m_isStarted);
 
             while (true)
             {
-                _ = Console.ReadLine();
+                string cmd = Console.ReadLine();
+
+                if (cmd == "status")
+                {
+                    foreach (var server in exposers)
+                    {
+                        Console.WriteLine(server.ToString());
+                    }
+                }
             }
         }
     }

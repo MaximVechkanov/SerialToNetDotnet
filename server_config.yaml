@@ -1,10 +1,22 @@
 ﻿# asdasd
 # asdas
+# net_protocol: {telnet, raw}
+# parity: {None, Odd, Even, Mark, Space}
+# stopbits: {0, 1, 2}
 skip_chars: ["\u000D"]
 links:
   - serial_port: COM4
     baudrate: 115200
+    databits: 8
+    stopbits: 1
+    parity: none
     tcp_port: 3100
+    terminal_type: raw
   - serial_port: COM5
     baudrate: 115200
+    databits: 8
+    stopbits: 1
+    parity: none
     tcp_port: 3101
+    terminal_type: telnet
+
