@@ -18,13 +18,13 @@ namespace SerialToNetDotnet
 
     class Configuration
     {
-        public List<char> skip_chars;
+        public List<char> skip_chars { get; set; }
         public List<PortCfg> links { get; set; }
     }
 
     class Program
     {
-        private static List<Exposer> exposers;
+        private static List<Connector> connectors;
 
         static void Main(string[] args)
         {
@@ -43,7 +43,6 @@ namespace SerialToNetDotnet
 
             Configuration config;
 
-            exposers = new List<Exposer>();
             try
             {
                 config = deserializer.Deserialize<Configuration>(File.ReadAllText(fileName));
@@ -54,14 +53,15 @@ namespace SerialToNetDotnet
                 return;
             }
 
+            connectors = new List<Connector>();
 
             foreach (var link in config.links)
             {
-                var terminalTypeTmp = Exposer.TerminalType.unknown;
+                var terminalTypeTmp = TerminalType.unknown;
 
                 try
                 {
-                    terminalTypeTmp = (Exposer.TerminalType)Enum.Parse(typeof(Exposer.TerminalType), link.terminal_type);
+                    terminalTypeTmp = (TerminalType)Enum.Parse(typeof(TerminalType), link.terminal_type);
                 }
                 catch
                 {
@@ -71,7 +71,7 @@ namespace SerialToNetDotnet
                 try
                 {
                     var parity = (System.IO.Ports.Parity)Enum.Parse(typeof(System.IO.Ports.Parity), link.parity, true);
-                    Exposer.Config srvCfg = new Exposer.Config
+                    Connector.Config srvCfg = new Connector.Config
                     {
                         baudRate = link.baudrate,
                         portName = link.serial_port,
@@ -83,15 +83,15 @@ namespace SerialToNetDotnet
                         parity = parity,
                     };
 
-                    exposers.Add(new Exposer(srvCfg));
+                    connectors.Add(new Connector(srvCfg));
                 }
                 catch (Exception e)
                 {
-                    Console.Error.WriteLine("Failed to create port mapping - check config: {0}", e);
+                    Console.Error.WriteLine("Failed to create port connector - check config: {0}", e);
                 }
             }
 
-            foreach (var srv in exposers)
+            foreach (var srv in connectors)
             {
                 try
                 {
@@ -99,11 +99,11 @@ namespace SerialToNetDotnet
                 }
                 catch (Exception e)
                 {
-                    Console.Error.WriteLine("Failed to start mapper: {0}", e.Message);
+                    Console.Error.WriteLine("Failed to start connector: {0}", e.Message);
                 }
             }
 
-            exposers.RemoveAll((exposer) => !exposer.m_isStarted);
+            connectors.RemoveAll((exposer) => !exposer.IsStarted);
 
             while (true)
             {
@@ -111,7 +111,7 @@ namespace SerialToNetDotnet
 
                 if (cmd == "status")
                 {
-                    foreach (var server in exposers)
+                    foreach (var server in connectors)
                     {
                         Console.WriteLine(server.ToString());
                     }

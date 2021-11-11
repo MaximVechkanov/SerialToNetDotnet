@@ -4,7 +4,14 @@ using System.IO.Ports;
 
 namespace SerialToNetDotnet
 {
-    class Exposer
+    public enum TerminalType
+    {
+        raw,
+        telnet,
+        unknown
+    }
+
+    class Connector
     {
         public class Config
         {
@@ -20,26 +27,19 @@ namespace SerialToNetDotnet
             public Parity parity { get; set; }
         }
 
-        public enum TerminalType
-        {
-            raw,
-            telnet,
-            unknown
-        }
-
-        private Config m_config;
+        private readonly Config m_config;
         private readonly Server m_server;
         private readonly SerialPort m_serial;
-        public bool m_isStarted;
+        public bool IsStarted { get; private set; }
 
-        public Exposer(Config config)
+        public Connector(Config config)
         {
             m_config = config;
             m_server = new Server(m_config.tcpPort, m_config.portName, config.skipChars);
             m_server.DataReceived += NetDataReceivedHandler;
 
             m_serial = new SerialPort();
-            m_isStarted = false;
+            IsStarted = false;
         }
 
 
@@ -72,7 +72,7 @@ namespace SerialToNetDotnet
                 throw new Exception("Server cannot be started");
             }
 
-            m_isStarted = true;
+            IsStarted = true;
         }
 
         private void NetDataReceivedHandler(byte[] buffer, int numBytes)
