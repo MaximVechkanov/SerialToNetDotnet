@@ -97,19 +97,15 @@ namespace SerialToNetDotnet
                 SendStringToSocket(clientSocket, "Already connected clients:\r\n");
 
                 SendStringToSocket(clientSocket, getClientsString());
-
-                //foreach (Socket sock in m_clients.Keys)
-                //{
-                //    SendStringToSocket(
-                //        clientSocket,
-                //        "    " + sock.RemoteEndPoint.ToString() + " - " + m_clients[sock].m_signature + "\r\n"
-                //        );
-                //}
             }
 
             SendStringToSocket(clientSocket, "\r\n");
+            AskForSignature(clientSocket);
+        }
 
-            SendStringToSocket(clientSocket, "Please enter your short signature: ");
+        private void AskForSignature(Socket sock)
+        {
+            SendStringToSocket(sock, "Please enter your short signature: ");
         }
 
         public string getClientsString()
@@ -170,12 +166,24 @@ namespace SerialToNetDotnet
                     {
                         if (client.m_state == Client.State.signing)
                         {
+                            // Echo back the input symbol
                             SendBytesToSocket(clientSocket, new byte[] { m_rxBuffer[0] });
-                            client.AddSignatureChar(m_rxBuffer[0]);
+                            var res = client.AddSignatureChar(m_rxBuffer[0]);
+
+                            // If an empty signature provided - ask again
+                            if (res == Client.SignatureAppendResult.empty)
+                            {
+                                AskForSignature(clientSocket);
                         }
-                        else if (!m_skippedChars.Contains((char)m_rxBuffer[0]))
+                            else if (res == Client.SignatureAppendResult.finished)
+                            {
+                                SendStringToSocket(clientSocket, "Thanks\r\n");
+                            }
+                        }
+                        else
                         {
                             // Normal byte in normal state
+                            if (!m_skippedChars.Contains((char)m_rxBuffer[0]))
                             DataReceived(m_rxBuffer, bytesReceived);
                         }
                     }
@@ -198,6 +206,9 @@ namespace SerialToNetDotnet
         {
             foreach (Socket sock in m_clients.Keys)
             {
+                // Do not broadcast to a signing client
+                if (m_clients[sock].m_state != Client.State.signing)
+            {
                 try
                 {
                     SendBytesToSocket(sock, data);
@@ -208,6 +219,7 @@ namespace SerialToNetDotnet
                     m_clients.Remove(sock);
                 }
             }
+        }
         }
 
         private void SendStringToSocket(Socket socket, string msg)

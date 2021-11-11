@@ -13,6 +13,13 @@ namespace SerialToNetDotnet
             iac, // Interpret as command
         }
 
+        public enum SignatureAppendResult
+        {
+            finished,
+            resume,
+            empty,
+        }
+
         public State m_state { get; set; }
         private State m_prevState = State.normal;
 
@@ -52,15 +59,26 @@ namespace SerialToNetDotnet
             }
         }
 
-        public void AddSignatureChar(byte ch)
+        public SignatureAppendResult AddSignatureChar(byte ch)
         {
-            // Enter - 
+            // CR - finish signature input if it is not empty
             if ((char)ch == '\n')
-                m_state = State.normal;
+            {
+                if (m_signature.Length != 0)
+                {
+                    m_state = State.normal;
+                    return SignatureAppendResult.finished;
+                }
+                else
+                    return SignatureAppendResult.empty;
+            }
             else if (!Char.IsControl((char)ch))
             {
                 m_signature += (char)ch;
+                return SignatureAppendResult.resume;
             }
+            else
+                return SignatureAppendResult.resume;
         }
     }
 }
