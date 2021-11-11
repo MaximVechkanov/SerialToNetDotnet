@@ -116,6 +116,10 @@ namespace SerialToNetDotnet
                         Console.WriteLine(server.ToString());
                     }
                 }
+                else if (cmd == "exit")
+                {
+                    return;
+                }
             }
         }
     }
