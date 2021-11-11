@@ -18,18 +18,19 @@ namespace SerialToNetDotnet
 
     class Server
     {
-        private int m_port;
+        private readonly int m_port;
         private Socket m_serverSocket;
         // TODO List<Clients>
         private Dictionary<Socket, Client> m_clients;
         private const uint m_bufLen = 32;
         private byte[] m_rxBuffer;
-        private string m_portName;
+        private readonly string m_portName;
         public delegate void DataReceivedHandler(byte[] buffer, int numBytes);
         public event DataReceivedHandler DataReceived;
-        private List<char> m_skippedChars;
+        private readonly List<char> m_skippedChars;
+        private readonly TerminalType m_terminalType;
 
-        public Server(int port, string comPortName, List<char> skippedChars)
+        public Server(TerminalType termType, int port, string comPortName, List<char> skippedChars)
         {
             this.m_portName = comPortName;
             this.m_port = port;
@@ -39,6 +40,7 @@ namespace SerialToNetDotnet
             this.m_rxBuffer = new byte[m_bufLen];
 
             this.m_skippedChars = skippedChars;
+            this.m_terminalType = termType;
         }
 
         public void Start()
@@ -71,21 +73,24 @@ namespace SerialToNetDotnet
 
             Console.WriteLine("Server at {0} ({1}): client connected from {2}", m_port, m_portName, remoteEp.ToString());
 
-            clientSocket.BeginReceive(m_rxBuffer, 0, 1, SocketFlags.None, new AsyncCallback(ReceiveData), clientSocket);
+            clientSocket.BeginReceive(m_rxBuffer, 0, 1, SocketFlags.None, new AsyncCallback(ReceiveDataCallback), clientSocket);
             m_serverSocket.BeginAccept(new AsyncCallback(IncomeConnectionCallback), m_serverSocket);
         }
 
         private void SendWelcomeMessage(Socket clientSocket)
         {
-            SendBytesToSocket(
-                clientSocket,
-                new byte[] {
+            if (m_terminalType == TerminalType.telnet)
+            {
+                SendBytesToSocket(
+                    clientSocket,
+                    new byte[] {
                     (byte)TelnetCmd.IAC, (byte)TelnetCmd.DO,   0x01,   // Don't Echo
                     (byte)TelnetCmd.IAC, (byte)TelnetCmd.DO,   0x21,   // Do Remote Flow Control
                     (byte)TelnetCmd.IAC, (byte)TelnetCmd.WILL, 0x01,   // Will Echo
                     (byte)TelnetCmd.IAC, (byte)TelnetCmd.WILL, 0x03    // Will Supress Go Ahead
-                }
-            );
+                    }
+                );
+            }
 
             SendStringToSocket(
                 clientSocket,
@@ -125,17 +130,17 @@ namespace SerialToNetDotnet
 
         private void SendBytesToSocket(Socket sock, byte[] data)
         {
-            sock.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendData), sock);
+            sock.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendDataCallback), sock);
         }
 
-        private void SendData(IAsyncResult result)
+        private void SendDataCallback(IAsyncResult result)
         {
             Socket clientSocket = (Socket)result.AsyncState;
 
             clientSocket.EndSend(result);
         }
 
-        private void ReceiveData(IAsyncResult result)
+        private void ReceiveDataCallback(IAsyncResult result)
         {
             try
             {
@@ -158,7 +163,9 @@ namespace SerialToNetDotnet
                 }
                 else
                 {
-                    if (m_rxBuffer[0] == (byte)TelnetCmd.IAC)
+                    // Process IAC (Interpret as command) symbol in case of telnet
+                    if ((m_rxBuffer[0] == (byte)TelnetCmd.IAC) &&
+                        (m_terminalType == TerminalType.telnet))
                     {
                         client.ToIacState();
                     }
@@ -174,7 +181,7 @@ namespace SerialToNetDotnet
                             if (res == Client.SignatureAppendResult.empty)
                             {
                                 AskForSignature(clientSocket);
-                        }
+                            }
                             else if (res == Client.SignatureAppendResult.finished)
                             {
                                 SendStringToSocket(clientSocket, "Thanks\r\n");
@@ -184,12 +191,12 @@ namespace SerialToNetDotnet
                         {
                             // Normal byte in normal state
                             if (!m_skippedChars.Contains((char)m_rxBuffer[0]))
-                            DataReceived(m_rxBuffer, bytesReceived);
+                                DataReceived(m_rxBuffer, bytesReceived);
                         }
                     }
                 }
 
-                clientSocket.BeginReceive(m_rxBuffer, 0, 1, SocketFlags.None, new AsyncCallback(ReceiveData), clientSocket);
+                clientSocket.BeginReceive(m_rxBuffer, 0, 1, SocketFlags.None, new AsyncCallback(ReceiveDataCallback), clientSocket);
             }
             catch { }
         }
@@ -208,18 +215,18 @@ namespace SerialToNetDotnet
             {
                 // Do not broadcast to a signing client
                 if (m_clients[sock].m_state != Client.State.signing)
-            {
-                try
                 {
-                    SendBytesToSocket(sock, data);
-                }
-                catch
-                {
-                    sock.Close();
-                    m_clients.Remove(sock);
+                    try
+                    {
+                        SendBytesToSocket(sock, data);
+                    }
+                    catch
+                    {
+                        sock.Close();
+                        m_clients.Remove(sock);
+                    }
                 }
             }
-        }
         }
 
         private void SendStringToSocket(Socket socket, string msg)

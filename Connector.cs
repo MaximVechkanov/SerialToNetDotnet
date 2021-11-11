@@ -35,7 +35,7 @@ namespace SerialToNetDotnet
         public Connector(Config config)
         {
             m_config = config;
-            m_server = new Server(m_config.tcpPort, m_config.portName, config.skipChars);
+            m_server = new Server(m_config.terminalType, m_config.tcpPort, m_config.portName, config.skipChars);
             m_server.DataReceived += NetDataReceivedHandler;
 
             m_serial = new SerialPort();
