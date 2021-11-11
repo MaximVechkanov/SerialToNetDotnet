@@ -211,6 +211,8 @@ namespace SerialToNetDotnet
 
         public void SendBytesToAll(byte[] data)
         {
+            List<Socket> socksToClose = new List<Socket>();
+
             foreach (Socket sock in m_clients.Keys)
             {
                 // Do not broadcast to a signing client
@@ -222,10 +224,16 @@ namespace SerialToNetDotnet
                     }
                     catch
                     {
-                        sock.Close();
-                        m_clients.Remove(sock);
+                        socksToClose.Add(sock);
                     }
                 }
+            }
+
+            // Remove all erroneous sockets after iteration, cause cannot do it inside foreach
+            foreach (Socket sock in socksToClose)
+            {
+                sock.Close();
+                m_clients.Remove(sock);
             }
         }
 
