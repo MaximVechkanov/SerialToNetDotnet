@@ -41,9 +41,19 @@ namespace SerialToNetDotnet
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
 
-            Configuration config = deserializer.Deserialize<Configuration>(File.ReadAllText(fileName));
+            Configuration config;
 
             exposers = new List<Exposer>();
+            try
+            {
+                config = deserializer.Deserialize<Configuration>(File.ReadAllText(fileName));
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("Failed to read config. {0}", e.Message);
+                return;
+            }
+
 
             foreach (var link in config.links)
             {
