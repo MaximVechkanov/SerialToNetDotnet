@@ -43,6 +43,7 @@ namespace SerialToNetDotnet
             this.m_skippedChars = skippedChars;
             this.m_terminalType = termType;
 
+            // In telnet, "\r\n" is the correct line ending. React only om the last one in signing
             if (this.m_terminalType == TerminalType.telnet)
                 this.m_lineEndChar = '\n';
             else if (this.m_terminalType == TerminalType.raw)
