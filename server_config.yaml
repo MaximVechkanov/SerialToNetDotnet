@@ -2,6 +2,11 @@
 # net_protocol: {telnet, raw}
 # parity: {None, Odd, Even, Mark, Space}
 # stopbits: {0, 1, 2}
+# echo_type:
+#   none - no echo from server or device
+#   device - device connected to serial will do echo
+#   server - telnet server will do echo. NOTE: line editing of eny type is not supported
+
 
 links:
   - serial_port: COM4
@@ -10,8 +15,9 @@ links:
     stopbits: 1
     parity: none
     tcp_port: 3100
-    terminal_type: raw
-    skip_chars: [] #"\u000D"
+    terminal_type: telnet
+    skip_chars: ["\u000D"]
+    echo_type: device
 
   - serial_port: COM9
     baudrate: 115200
@@ -19,6 +25,7 @@ links:
     stopbits: 1
     parity: none
     tcp_port: 3101
-    terminal_type: telnet
-    skip_chars: ["\u000D"]
+    terminal_type: raw
+    skip_chars: [] # "\u000D"
+    echo_type: server
 

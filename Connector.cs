@@ -11,19 +11,23 @@ namespace SerialToNetDotnet
         unknown
     }
 
+    public class NetServerConfig
+    {
+        public TerminalType terminalType { get; set; }
+        public EchoType echoType { get; set; }
+        public List<char> skipChars { get; set; }
+        public int tcpPort { get; set; }
+    }
+
     class Connector
     {
         public class Config
         {
-            public int tcpPort { get; set; }
+            public NetServerConfig netCfg { get; set; }
             public int baudRate { get; set; }
             public string portName { get; set; }
-            public List<char> skipChars { get; set; }
             public int databits { get; set; }
-
             public int stopbits { get; set; }
-            public TerminalType terminalType { get; set; }
-
             public Parity parity { get; set; }
         }
 
@@ -35,7 +39,7 @@ namespace SerialToNetDotnet
         public Connector(Config config)
         {
             m_config = config;
-            m_server = new Server(m_config.terminalType, m_config.tcpPort, m_config.portName, config.skipChars);
+            m_server = new Server(m_config.netCfg, m_config.portName);
             m_server.DataReceived += NetDataReceivedHandler;
 
             m_serial = new SerialPort();
@@ -96,8 +100,8 @@ namespace SerialToNetDotnet
                 "Serial {0}, is opened: {1}, type: {2}. Server on port {3}, clients:\r\n",
                 m_config.portName,
                 m_serial.IsOpen,
-                m_config.terminalType.ToString(),
-                m_config.tcpPort);
+                m_config.netCfg.terminalType.ToString(),
+                m_config.netCfg.tcpPort);
 
             res += m_server.getClientsString();
 

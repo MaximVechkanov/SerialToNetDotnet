@@ -15,6 +15,7 @@ namespace SerialToNetDotnet
         public string terminal_type { get; set; }
         public string parity { get; set; }
         public List<char> skip_chars { get; set; }
+        public string echo_type { get; set; }
     }
 
     class Configuration
@@ -71,16 +72,24 @@ namespace SerialToNetDotnet
                 try
                 {
                     var parity = (System.IO.Ports.Parity)Enum.Parse(typeof(System.IO.Ports.Parity), link.parity, true);
+                    var echo = (EchoType)Enum.Parse(typeof(EchoType), link.echo_type, true);
+
                     Connector.Config srvCfg = new Connector.Config
                     {
                         baudRate = link.baudrate,
                         portName = link.serial_port,
-                        tcpPort = link.tcp_port,
-                        skipChars = link.skip_chars,
                         databits = link.databits,
                         stopbits = link.stopbits,
-                        terminalType = terminalTypeTmp,
                         parity = parity,
+
+                        netCfg = new NetServerConfig
+                        {
+                            tcpPort = link.tcp_port,
+                            skipChars = link.skip_chars,
+                            terminalType = terminalTypeTmp,
+                            echoType = echo,
+                        },
+                        
                     };
 
                     connectors.Add(new Connector(srvCfg));

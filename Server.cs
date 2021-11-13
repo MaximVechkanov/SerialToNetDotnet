@@ -15,48 +15,50 @@ namespace SerialToNetDotnet
         DONT = 0xFE,
 
     }
+    public enum EchoType
+    {
+        none,
+        device,
+        server
+    }
 
     class Server
     {
-        private readonly int m_port;
+        NetServerConfig m_cfg;
+
         private Socket m_serverSocket;
         // TODO List<Clients>
         private Dictionary<Socket, Client> m_clients;
-        private const uint m_bufLen = 32;
+        private const uint m_bufLen = 16;
         private byte[] m_rxBuffer;
         private readonly string m_portName;
         public delegate void DataReceivedHandler(byte[] buffer, int numBytes);
         public event DataReceivedHandler DataReceived;
-        private readonly List<char> m_skippedChars;
-        private readonly TerminalType m_terminalType;
         private readonly char m_lineEndChar;
 
-        public Server(TerminalType termType, int port, string comPortName, List<char> skippedChars)
+        public Server(NetServerConfig config, string comPortName)
         {
             this.m_portName = comPortName;
-            this.m_port = port;
+            this.m_cfg = config;
             this.m_serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             this.m_clients = new Dictionary<Socket, Client>();
 
             this.m_rxBuffer = new byte[m_bufLen];
 
-            this.m_skippedChars = skippedChars;
-            this.m_terminalType = termType;
-
             // In telnet, "\r\n" is the correct line ending. React only om the last one in signing
-            if (this.m_terminalType == TerminalType.telnet)
+            if (m_cfg.terminalType == TerminalType.telnet)
                 this.m_lineEndChar = '\n';
-            else if (this.m_terminalType == TerminalType.raw)
+            else if (m_cfg.terminalType == TerminalType.raw)
                 this.m_lineEndChar = '\r';
         }
 
         public void Start()
         {
-            m_serverSocket.Bind(new IPEndPoint(IPAddress.Any, this.m_port));
+            m_serverSocket.Bind(new IPEndPoint(IPAddress.Any, m_cfg.tcpPort));
             m_serverSocket.Listen(0);
             m_serverSocket.BeginAccept(new AsyncCallback(IncomeConnectionCallback), m_serverSocket);
 
-            Console.WriteLine("Server started on port {0} ({1})", this.m_port, m_portName);
+            Console.WriteLine("Server started on port {0} ({1})", m_cfg.tcpPort, m_portName);
         }
 
         public void Stop()
@@ -78,7 +80,7 @@ namespace SerialToNetDotnet
 
             m_clients.Add(clientSocket, client);
 
-            Console.WriteLine("Server at {0} ({1}): client connected from {2}", m_port, m_portName, remoteEp.ToString());
+            Console.WriteLine("Server at {0} ({1}): client connected from {2}", m_cfg.tcpPort, m_portName, remoteEp.ToString());
 
             clientSocket.BeginReceive(m_rxBuffer, 0, 1, SocketFlags.None, new AsyncCallback(ReceiveDataCallback), clientSocket);
             m_serverSocket.BeginAccept(new AsyncCallback(IncomeConnectionCallback), m_serverSocket);
@@ -86,22 +88,28 @@ namespace SerialToNetDotnet
 
         private void SendWelcomeMessage(Socket clientSocket)
         {
-            if (m_terminalType == TerminalType.telnet)
+            if (m_cfg.terminalType == TerminalType.telnet)
             {
-                SendBytesToSocket(
-                    clientSocket,
-                    new byte[] {
+                byte[] options = new byte[] {
                     (byte)TelnetCmd.IAC, (byte)TelnetCmd.DO,   0x01,   // Don't Echo
                     (byte)TelnetCmd.IAC, (byte)TelnetCmd.DO,   0x21,   // Do Remote Flow Control
                     (byte)TelnetCmd.IAC, (byte)TelnetCmd.WILL, 0x01,   // Will Echo
                     (byte)TelnetCmd.IAC, (byte)TelnetCmd.WILL, 0x03    // Will Supress Go Ahead
-                    }
+                };
+
+                // If echo does not perfrom by server or device - inform client about it
+                if (m_cfg.echoType == EchoType.none)
+                    options[7] = (byte)TelnetCmd.WONT;
+
+                SendBytesToSocket(
+                    clientSocket,
+                    options
                 );
             }
 
             SendStringToSocket(
                 clientSocket,
-                "You connected to COM-to-telnet on port " + m_port.ToString() + ", COM port " + m_portName + "\r\n"
+                "You connected to COM-to-telnet on port " + m_cfg.tcpPort.ToString() + ", COM port " + m_portName + "\r\n"
                 );
 
             SendStringToSocket(clientSocket, "Already connected clients:\r\n");
@@ -138,7 +146,7 @@ namespace SerialToNetDotnet
 
         private void SendByteToSocket(Socket sock, byte data)
         {
-            sock.BeginSend(new byte[1] { data }, 0, 1, SocketFlags.None, new AsyncCallback(SendDataCallback), sock);
+            SendBytesToSocket(sock, new byte[1] { data });
         }
 
         private void SendDataCallback(IAsyncResult result)
@@ -173,7 +181,7 @@ namespace SerialToNetDotnet
                 {
                     // Process IAC (Interpret as command) symbol in case of telnet
                     if ((m_rxBuffer[0] == (byte)TelnetCmd.IAC) &&
-                        (m_terminalType == TerminalType.telnet))
+                        (m_cfg.terminalType == TerminalType.telnet))
                     {
                         client.ToIacState();
                     }
@@ -183,7 +191,10 @@ namespace SerialToNetDotnet
                         if (client.m_state == Client.State.signing)
                         {
                             // Echo back the input symbol
-                            SendByteToSocket(clientSocket, m_rxBuffer[0]);
+                            // Note: in case of telnet if echo is disabled (none), we informed about it, so client
+                            // is expected to do local echo. Do not echo in this case
+                            if (!((m_cfg.terminalType == TerminalType.telnet) && (m_cfg.echoType == EchoType.none)))
+                                SendByteToSocket(clientSocket, m_rxBuffer[0]);
 
                             var res = client.AddSignatureChar((char)m_rxBuffer[0], m_lineEndChar);
 
@@ -200,8 +211,14 @@ namespace SerialToNetDotnet
                         else
                         {
                             // Normal byte in normal state
-                            if (!m_skippedChars.Contains((char)m_rxBuffer[0]))
+                            if (!m_cfg.skipChars.Contains((char)m_rxBuffer[0]))
+                            {
+                                // If server is asked for echo, do it
+                                if (m_cfg.echoType == EchoType.server)
+                                    SendByteToSocket(clientSocket, m_rxBuffer[0]);
+
                                 DataReceived(m_rxBuffer, bytesReceived);
+                            }
                         }
                     }
                 }
