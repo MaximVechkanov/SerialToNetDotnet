@@ -29,6 +29,7 @@ A simple serial to telnet interfacing with multi-client support implemented in C
 2. Stability
     - Handle all errors from network and serial
     - Recover tcp servers and serial ports from erroneous states
+3. More self-functional Client (socket and send functions inside it)
 5. Use async/await instead of callbacks
 6. Open serial port only on demand. Close it after last client is disconnected. Make it configurable per port (?)
 7. Test with other telnet clients
