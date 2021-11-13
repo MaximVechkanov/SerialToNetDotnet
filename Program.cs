@@ -14,11 +14,11 @@ namespace SerialToNetDotnet
         public int stopbits { get; set; }
         public string terminal_type { get; set; }
         public string parity { get; set; }
+        public List<char> skip_chars { get; set; }
     }
 
     class Configuration
     {
-        public List<char> skip_chars { get; set; }
         public List<PortCfg> links { get; set; }
     }
 
@@ -76,7 +76,7 @@ namespace SerialToNetDotnet
                         baudRate = link.baudrate,
                         portName = link.serial_port,
                         tcpPort = link.tcp_port,
-                        skipChars = config.skip_chars,
+                        skipChars = link.skip_chars,
                         databits = link.databits,
                         stopbits = link.stopbits,
                         terminalType = terminalTypeTmp,

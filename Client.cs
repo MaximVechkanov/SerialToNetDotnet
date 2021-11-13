@@ -59,10 +59,10 @@ namespace SerialToNetDotnet
             }
         }
 
-        public SignatureAppendResult AddSignatureChar(byte ch)
+        public SignatureAppendResult AddSignatureChar(char ch, char inputEndChar)
         {
             // CR - finish signature input if it is not empty
-            if ((char)ch == '\n')
+            if (ch == inputEndChar)
             {
                 if (m_signature.Length != 0)
                 {
@@ -72,9 +72,9 @@ namespace SerialToNetDotnet
                 else
                     return SignatureAppendResult.empty;
             }
-            else if (!Char.IsControl((char)ch))
+            else if (!Char.IsControl(ch))
             {
-                m_signature += (char)ch;
+                m_signature += ch;
                 return SignatureAppendResult.resume;
             }
             else

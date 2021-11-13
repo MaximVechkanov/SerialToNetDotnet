@@ -29,6 +29,7 @@ namespace SerialToNetDotnet
         public event DataReceivedHandler DataReceived;
         private readonly List<char> m_skippedChars;
         private readonly TerminalType m_terminalType;
+        private readonly char m_lineEndChar;
 
         public Server(TerminalType termType, int port, string comPortName, List<char> skippedChars)
         {
@@ -41,6 +42,11 @@ namespace SerialToNetDotnet
 
             this.m_skippedChars = skippedChars;
             this.m_terminalType = termType;
+
+            if (this.m_terminalType == TerminalType.telnet)
+                this.m_lineEndChar = '\n';
+            else if (this.m_terminalType == TerminalType.raw)
+                this.m_lineEndChar = '\r';
         }
 
         public void Start()
@@ -97,12 +103,8 @@ namespace SerialToNetDotnet
                 "You connected to COM-to-telnet on port " + m_port.ToString() + ", COM port " + m_portName + "\r\n"
                 );
 
-            if (m_clients.Count != 0)
-            {
-                SendStringToSocket(clientSocket, "Already connected clients:\r\n");
-
-                SendStringToSocket(clientSocket, getClientsString());
-            }
+            SendStringToSocket(clientSocket, "Already connected clients:\r\n");
+            SendStringToSocket(clientSocket, getClientsString());
 
             SendStringToSocket(clientSocket, "\r\n");
             AskForSignature(clientSocket);
@@ -131,6 +133,11 @@ namespace SerialToNetDotnet
         private void SendBytesToSocket(Socket sock, byte[] data)
         {
             sock.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendDataCallback), sock);
+        }
+
+        private void SendByteToSocket(Socket sock, byte data)
+        {
+            sock.BeginSend(new byte[1] { data }, 0, 1, SocketFlags.None, new AsyncCallback(SendDataCallback), sock);
         }
 
         private void SendDataCallback(IAsyncResult result)
@@ -171,11 +178,13 @@ namespace SerialToNetDotnet
                     }
                     else
                     {
+                        // in 'raw' mode, putty sends CR on Enter, in telnet - CR+LF
                         if (client.m_state == Client.State.signing)
                         {
                             // Echo back the input symbol
-                            SendBytesToSocket(clientSocket, new byte[] { m_rxBuffer[0] });
-                            var res = client.AddSignatureChar(m_rxBuffer[0]);
+                            SendByteToSocket(clientSocket, m_rxBuffer[0]);
+
+                            var res = client.AddSignatureChar((char)m_rxBuffer[0], m_lineEndChar);
 
                             // If an empty signature provided - ask again
                             if (res == Client.SignatureAppendResult.empty)
