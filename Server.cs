@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SerialToNetDotnet
 {
@@ -34,6 +36,11 @@ namespace SerialToNetDotnet
         private readonly string m_portName;
         public delegate void DataReceivedHandler(byte[] buffer, int numBytes);
         public event DataReceivedHandler DataReceived;
+
+        public delegate void ClientConnectEvent();
+        public event ClientConnectEvent OnFirstClientConnected;
+        public event ClientConnectEvent OnLastClientDisconnected;
+
         private readonly char m_lineEndChar;
 
         public Server(NetServerConfig config, string comPortName)
@@ -72,6 +79,40 @@ namespace SerialToNetDotnet
 
             Socket clientSocket = tmpSocket.EndAccept(result);
 
+            ConnectClient(clientSocket);
+            
+            m_serverSocket.BeginAccept(new AsyncCallback(IncomeConnectionCallback), m_serverSocket);
+        }
+
+        private void OnClientConnectedToUnavailablePort(Socket sock)
+        {
+            var msg = "Failed to open serial port " + m_portName + ", please check its status";
+            byte[] data = Encoding.ASCII.GetBytes(msg);
+
+            sock.Send(data, SocketFlags.None);
+
+            // Assuming we have not too slow network and client, so message will be delivered in 1 sec
+            Thread.Sleep(1000);
+
+            sock.Close();
+        }
+
+        private void ConnectClient(Socket clientSocket)
+        {
+            if (m_clients.Count == 0)
+            {
+                try
+                {
+                    OnFirstClientConnected();
+                }
+                catch
+                {
+                    Task.Run(() => { OnClientConnectedToUnavailablePort(clientSocket); } );
+                    
+                    return;
+                }
+            }
+
             uint clientID = (uint)m_clients.Count + 1;
             IPEndPoint remoteEp = (IPEndPoint)clientSocket.RemoteEndPoint;
             Client client = new Client(clientID, remoteEp, this);
@@ -83,7 +124,6 @@ namespace SerialToNetDotnet
             Console.WriteLine("Server at {0} ({1}): client connected from {2}", m_cfg.tcpPort, m_portName, remoteEp.ToString());
 
             clientSocket.BeginReceive(m_rxBuffer, 0, 1, SocketFlags.None, new AsyncCallback(ReceiveDataCallback), clientSocket);
-            m_serverSocket.BeginAccept(new AsyncCallback(IncomeConnectionCallback), m_serverSocket);
         }
 
         private void SendWelcomeMessage(Socket clientSocket)
@@ -139,9 +179,9 @@ namespace SerialToNetDotnet
             return res;
         }
 
-        private void SendBytesToSocket(Socket sock, byte[] data)
+        private IAsyncResult SendBytesToSocket(Socket sock, byte[] data)
         {
-            sock.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendDataCallback), sock);
+            return sock.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(SendDataCallback), sock);
         }
 
         private void SendByteToSocket(Socket sock, byte data)
@@ -167,8 +207,7 @@ namespace SerialToNetDotnet
 
                 if (bytesReceived == 0)
                 {
-                    m_clients.Remove(clientSocket);
-                    clientSocket.Close();
+                    DisconnectClient(clientSocket);
                 }
 
                 // received data (byte) is in m_rxBuffer[0];
@@ -259,15 +298,23 @@ namespace SerialToNetDotnet
             // Remove all erroneous sockets after iteration, cause cannot do it inside foreach
             foreach (Socket sock in socksToClose)
             {
-                sock.Close();
-                m_clients.Remove(sock);
+                DisconnectClient(sock);
             }
         }
 
-        private void SendStringToSocket(Socket socket, string msg)
+        private IAsyncResult SendStringToSocket(Socket socket, string msg)
         {
             byte[] data = Encoding.ASCII.GetBytes(msg);
-            SendBytesToSocket(socket, data);
+            return SendBytesToSocket(socket, data);
+        }
+
+        private void DisconnectClient(Socket sock)
+        {
+            sock.Close();
+            m_clients.Remove(sock);
+
+            if (m_clients.Count == 0)
+                OnLastClientDisconnected();
         }
     }
 }

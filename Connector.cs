@@ -41,6 +41,8 @@ namespace SerialToNetDotnet
             m_config = config;
             m_server = new Server(m_config.netCfg, m_config.portName);
             m_server.DataReceived += NetDataReceivedHandler;
+            m_server.OnFirstClientConnected += FirstClientConnectedHandler;
+            m_server.OnLastClientDisconnected += LastClientDisconnectedHandler;
 
             m_serial = new SerialPort();
             IsStarted = false;
@@ -58,14 +60,6 @@ namespace SerialToNetDotnet
             m_serial.Handshake = Handshake.None;
             m_serial.DataReceived += SerialDataReceivedHandler;
 
-            try
-            {
-                m_serial.Open();
-            }
-            catch
-            {
-                throw new Exception(String.Format("Cannot open port {0}", m_config.portName));
-            }
 
             try
             {
@@ -94,6 +88,22 @@ namespace SerialToNetDotnet
             m_server.SendBytesToAll(rxBuf);
         }
 
+        private void FirstClientConnectedHandler()
+        {
+            m_serial.Open();
+            Console.WriteLine("Serial port " + m_config.portName + " opened");
+        }
+
+        private void LastClientDisconnectedHandler()
+        {
+            if (m_serial.IsOpen)
+            {
+                m_serial.Close();
+                Console.WriteLine("Serial port " + m_config.portName + " closed");
+            }
+        }
+
+
         public override string ToString()
         {
             string res = string.Format(
@@ -107,6 +117,7 @@ namespace SerialToNetDotnet
 
             return res;
         }
+
 
         internal static StopBits stopBitsIntToEnum(int num)
         {

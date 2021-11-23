@@ -25,7 +25,7 @@ links:
     stopbits: 1
     parity: none
     tcp_port: 3101
-    terminal_type: raw
-    skip_chars: [] # "\u000D"
-    echo_type: server
+    terminal_type: telnet
+    skip_chars: ["\u000D"]
+    echo_type: device
 
