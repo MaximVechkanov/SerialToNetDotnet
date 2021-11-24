@@ -25,20 +25,24 @@ A simple serial to telnet interfacing with multi-client support implemented in C
 1. Choose the publish profile for your system, or create your own
 1. Press `Publish` button
 1. Your executables will be in the specified folder. Defaults are:
-    - <project>\bin\Release\net5.0\publish\osx-x64 for MacOS
-    - <project>\bin\Release\net5.0\publish\win64 for win64
-    - <project>\bin\Release\net5.0\publish\linux-x64 for Linux x64
+    - .\bin\Release\net5.0\publish\osx-x64 for MacOS
+    - .\bin\Release\net5.0\publish\win64 for win64
+    - .\bin\Release\net5.0\publish\linux-x64 for Linux x64
 
 ### Command line
-<TDB>
+TDB
 
 ## Usage
-1. Copy `SerialToNetDotnet.exe` and `YamlDotNet.dll` files from `bin/Release` ('bin/Debug') into a directory
-3. Create a YAML configuration file in the same directory as used for previous point. Use `server_config.yaml` as a reference
-4. Run `SerialToNetDotnet.exe` with the path to configuration file. If nothing is specified, it will use `server_config.yaml` from current directory as default.
-5. If either serial or TCP port cannot be opened, corresponding interface will not be created.
-6. Open a telnet connection to the host where the program is running. Use one of the ports specified in your config. This is tested only with Putty
-7. You can type `status` command into the program window to print the current status of opened ports and connected clients
+1. Copy executable file and libraries from publication folder into a directory. Files to copy:
+    - Windows: SerialToNetDotnet.exe
+    - Linux: libSystem.IO.Ports.Native.so, SerialToNetDotnet
+    - MacOS: libSystem.IO.Ports.Native.dylib, SerialToNetDotnet
+1. Create a YAML configuration file in the same directory as used for previous point. Use `server_config.yaml` as a reference
+1. Run `SerialToNetDotnet(.exe)` with the path to configuration file. If nothing is specified, it will use `server_config.yaml` from the same directory as default.
+1. Open a telnet connection to the host where the program is running. Use one of the ports specified in your config. This is tested only with Putty
+    - Enter a short signature to be a recognizable client
+3. When first client is connected, server tries to open the corresponding serial port. If it fails, a message is sent to client and to console
+4. You can type `status` command into the program window to print the current status of opened ports and connected clients
 
 ## TODO list
 1. More self-functional Client (socket and send functions inside it)
