@@ -22,7 +22,7 @@ A simple serial to telnet interfacing with multi-client support implemented in C
 ### Visual studio
 1. Open `SerialToNetDotnet.sln` with Visual Studio 2019. More recent should also work.
 1. Right-click `SerialToNetDotnet` project, select `Publish`
-1. Choose the publish profile for your system, or create your own
+1. Choose the publish profile for your target system, or create your own
 1. Press `Publish` button
 1. Your executables will be in the specified folder. Defaults are:
     - .\bin\Release\net5.0\publish\osx-x64 for MacOS
