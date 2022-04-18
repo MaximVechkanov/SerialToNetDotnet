@@ -31,7 +31,7 @@ namespace SerialToNetDotnet
             public Parity parity { get; set; }
         }
 
-        private readonly Config m_config;
+        public readonly Config m_config;
         private readonly Server m_server;
         private readonly SerialPort m_serial;
         public bool IsStarted { get; private set; }

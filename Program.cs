@@ -108,7 +108,11 @@ namespace SerialToNetDotnet
                 }
                 catch (Exception e)
                 {
-                    Console.Error.WriteLine("Failed to start connector: {0}", e.Message);
+                    Console.Error.WriteLine(
+                        "Failed to start connector (COM port: {1}, TCP port: {2}): {0}",
+                        e.Message,
+                        srv.m_config.portName,
+                        srv.m_config.netCfg.tcpPort);
                 }
             }
 
